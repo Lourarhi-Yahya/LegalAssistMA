@@ -1,12 +1,16 @@
 """Téléchargement des modèles nécessaires au projet."""
 from __future__ import annotations
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from config import settings
 
 import subprocess
 from pathlib import Path
 
 from loguru import logger
 
-from config import settings
 
 
 def download_whisper(model_size: str) -> None:
