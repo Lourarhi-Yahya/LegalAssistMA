@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LegalAssistMA</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Poppins", Arial, sans-serif;
+      background: #f4f6fb;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1d3557, #457b9d);
+    }
+    .container {
+      width: min(1100px, 95%);
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.12);
+      padding: 2.5rem;
+      display: grid;
+      gap: 2rem;
+    }
+    h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      color: #1d3557;
+    }
+    .upload-area {
+      border: 2px dashed #457b9d;
+      border-radius: 16px;
+      padding: 2rem;
+      text-align: center;
+      background: rgba(69, 123, 157, 0.08);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .upload-area.dragover {
+      background: rgba(69, 123, 157, 0.2);
+      border-color: #1d3557;
+    }
+    button {
+      padding: 0.9rem 1.6rem;
+      border-radius: 12px;
+      border: none;
+      background: #1d3557;
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(29, 53, 87, 0.3);
+    }
+    .results {
+      display: grid;
+      gap: 1.5rem;
+    }
+    .card {
+      border-radius: 14px;
+      padding: 1.4rem;
+      background: #f8fafc;
+      border: 1px solid rgba(29, 53, 87, 0.08);
+    }
+    .card h2 {
+      margin-top: 0;
+      font-size: 1.3rem;
+      color: #1d3557;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.1);
+      max-height: 350px;
+      overflow-y: auto;
+    }
+    @media (max-width: 768px) {
+      .container {
+        padding: 1.6rem;
+      }
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>LegalAssistMA - Transcription d'audience</h1>
+      <p>Déposez un fichier audio d'audience pour obtenir un rapport complet (transcription, locuteurs, articles, recommandations).</p>
+    </header>
+    <div id="drop-zone" class="upload-area">
+      <p><strong>Glisser-déposer</strong> votre fichier audio ici ou cliquez pour parcourir.</p>
+      <input id="file-input" type="file" accept="audio/*" hidden />
+    </div>
+    <button id="submit-btn">Transcrire</button>
+    <div class="results" id="results" hidden>
+      <div class="card">
+        <h2>Résumé</h2>
+        <div id="summary"></div>
+      </div>
+      <div class="card">
+        <h2>Recommandations</h2>
+        <ul id="recommendations"></ul>
+      </div>
+      <div class="card">
+        <h2>Transcription complète</h2>
+        <pre id="transcript"></pre>
+      </div>
+      <div class="card">
+        <h2>Segments par locuteur</h2>
+        <pre id="speakers"></pre>
+      </div>
+      <div class="card">
+        <h2>Articles pertinents</h2>
+        <pre id="articles"></pre>
+      </div>
+    </div>
+  </div>
+  <script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const submitBtn = document.getElementById('submit-btn');
+    let selectedFile = null;
+
+    const resultsContainer = document.getElementById('results');
+    const summaryEl = document.getElementById('summary');
+    const recommendationsEl = document.getElementById('recommendations');
+    const transcriptEl = document.getElementById('transcript');
+    const speakersEl = document.getElementById('speakers');
+    const articlesEl = document.getElementById('articles');
+
+    const apiBaseUrl = window.location.origin;
+
+    function formatSegments(segments) {
+      return segments.map(seg => `[${seg.start.toFixed(2)}-${seg.end.toFixed(2)}] ${seg.speaker || ''}: ${seg.text}`).join('\n');
+    }
+
+    function formatArticles(articles) {
+      return articles.map(article => `Article ${article.article} (${article.code})\nScore: ${article.score?.toFixed(3)}\n${article.text}\n---`).join('\n\n');
+    }
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', event => {
+      event.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', event => {
+      event.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (event.dataTransfer.files.length) {
+        selectedFile = event.dataTransfer.files[0];
+        dropZone.querySelector('p').textContent = `Fichier sélectionné : ${selectedFile.name}`;
+      }
+    });
+
+    fileInput.addEventListener('change', event => {
+      selectedFile = event.target.files[0];
+      if (selectedFile) {
+        dropZone.querySelector('p').textContent = `Fichier sélectionné : ${selectedFile.name}`;
+      }
+    });
+
+    async function uploadFile() {
+      if (!selectedFile) {
+        alert('Veuillez sélectionner un fichier audio.');
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Traitement en cours...';
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/transcribe`, {
+          method: 'POST',
+          body: formData
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Erreur inconnue');
+        }
+        const data = await response.json();
+        summaryEl.innerText = data.llm_result.summary;
+        recommendationsEl.innerHTML = data.llm_result.recommendations
+          .map(item => `<li>${item.texte || JSON.stringify(item)}</li>`)
+          .join('');
+        transcriptEl.innerText = data.transcription
+          .map(seg => `[${seg.start.toFixed(2)}-${seg.end.toFixed(2)}] ${seg.text}`)
+          .join('\n');
+        speakersEl.innerText = formatSegments(data.diarization);
+        articlesEl.innerText = formatArticles(data.legal_articles);
+        resultsContainer.hidden = false;
+      } catch (error) {
+        alert(`Erreur lors de la transcription : ${error.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Transcrire';
+      }
+    }
+
+    submitBtn.addEventListener('click', uploadFile);
+  </script>
+</body>
+</html>

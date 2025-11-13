@@ -1,0 +1,41 @@
+# Environnements virtuels
+.venv/
+venv/
+ENV/
+
+# Fichiers Python compilés
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Configuration sensible
+.env
+.env.local
+*.log
+
+# Logs applicatifs
+logs/*
+!logs/.gitkeep
+!logs/app.log
+
+# Données volumineuses mais structure suivie
+/data/audio_samples/*
+!/data/audio_samples/.gitkeep
+/data/processed_audio/*
+!/data/processed_audio/.gitkeep
+/data/outputs/*
+!/data/outputs/.gitkeep
+/models/whisper/*
+!/models/whisper/.gitkeep
+/models/embeddings/*
+!/models/embeddings/.gitkeep
+
+# Systèmes
+.DS_Store
+Thumbs.db
+
+# Cache outils
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+.ipynb_checkpoints/
