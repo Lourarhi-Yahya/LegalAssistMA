@@ -34,9 +34,32 @@ def download_whisper(model_size: str) -> None:
         raise
 
 
+def ensure_spacy_installed() -> None:
+    """Garantit que spaCy est installé avant de lancer le téléchargement."""
+
+    try:
+        import importlib.util
+
+        if importlib.util.find_spec("spacy") is None:
+            raise ModuleNotFoundError
+    except ModuleNotFoundError:
+        logger.warning(
+            "spaCy est absent. Installation automatique de spacy==3.7.4..."
+        )
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "spacy==3.7.4"],
+                check=True,
+            )
+        except CalledProcessError as error:
+            logger.error("Impossible d'installer spaCy automatiquement: %s", error)
+            raise
+
+
 def download_spacy(model_name: str) -> None:
     """Télécharge le modèle spaCy requis."""
 
+    ensure_spacy_installed()
     logger.info("Téléchargement du modèle spaCy %s", model_name)
     try:
         subprocess.run(
@@ -44,12 +67,11 @@ def download_spacy(model_name: str) -> None:
             check=True,
         )
     except FileNotFoundError as error:
-        logger.error("Python ou spaCy introuvable pour le téléchargement: %s", error)
+        logger.error("Python introuvable pour le téléchargement du modèle spaCy: %s", error)
         raise
     except CalledProcessError as error:
         logger.error(
-            "Échec du téléchargement du modèle spaCy: %s. "
-            "Vérifiez que spaCy est installé (pip install spacy==3.7.4).",
+            "Échec du téléchargement du modèle spaCy: %s.",
             error,
         )
         raise
